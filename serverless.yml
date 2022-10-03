@@ -1,0 +1,24 @@
+service: cen3031-backend
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: ${opt:stage, 'dev'}
+  region: us-east-1
+  stackTags:
+    SITE: ${self:service}-${self:provider.stage}
+  tags:
+    SITE: ${self:service}-${self:provider.stage}
+  environment: 
+    REGION: ${self:provider.region}
+  lambdaHashingVersion: 20201221
+  httpApi:
+    cors: true
+
+functions:
+  hello:
+    handler: handler.hello
+    events:
+     - httpApi:
+        path: /hello
+        method: get
