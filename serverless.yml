@@ -11,14 +11,37 @@ provider:
     SITE: ${self:service}-${self:provider.stage}
   environment: 
     REGION: ${self:provider.region}
+    KEYEXAMPLE: ${env:KEYEXAMPLE}
+    # AWS_BUSINESSTABLEID: ${self:service}-${self:provider.stage}-${self:provider.region}-businesses
+
   lambdaHashingVersion: 20201221
   httpApi:
     cors: true
 
 functions:
   hello:
-    handler: handler.hello
+    handler: src/handler.hello
     events:
      - httpApi:
         path: /hello
         method: get
+  getRequest:
+    handler: src/handler.getRequest
+    events:
+     - httpApi:
+        path: /{name}
+        method: get
+        request: 
+          parameters: 
+            paths: 
+              name: true
+
+package:
+  exclude:
+    - node_modules/aws-sdk/**
+  individually: true
+
+plugins:
+  - serverless-webpack
+  - serverless-offline
+  - serverless-dotenv-plugin
