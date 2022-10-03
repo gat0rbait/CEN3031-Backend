@@ -1,6 +1,44 @@
-# package directories
-node_modules
-jspm_packages
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Serverless directories
-.serverless
+Makefile
+Setup-Readme.md
+
+# Coverage directory used by tools like istanbul
+coverage
+
+# nyc test coverage
+.nyc_output
+
+# node-waf configuration
+.lock-wscript
+
+# Dependency directories
+node_modules/
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+env.yml
+env-dev.yml
+env-staging.yml
+env-prod.yml
+
+# Misc
+.build/
+.serverless/
+.webpack/
+.vscode/
+dist/
+reports/
+tmp/
+package-lock.json
+.env.staging
+.env.development
+.DS_Store
