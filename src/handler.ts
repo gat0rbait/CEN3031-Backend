@@ -57,7 +57,7 @@ const hello = async (event: any, context: any) => {
     statusCode: 200,
     body: JSON.stringify(
       {
-        message: 'Go Serverless v2.0! Your function executed successfully!',
+        message: 'Go Serverless v2.0! Your function executed successfully! Test update for CI/CD!',
         input: event,
       },
       null,
