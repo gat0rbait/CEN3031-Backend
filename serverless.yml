@@ -11,35 +11,256 @@ provider:
     SITE: ${self:service}-${self:provider.stage}
   environment: 
     REGION: ${self:provider.region}
-    KEYEXAMPLE: ${env:KEYEXAMPLE}
-    # AWS_BUSINESSTABLEID: ${self:service}-${self:provider.stage}-${self:provider.region}-businesses
+    AWS_TASKTABLEID: ${self:service}-${self:provider.stage}-${self:provider.region}-tasks
+    AWS_COMMENTSTABLEID: ${self:service}-${self:provider.stage}-${self:provider.region}-comments
 
   lambdaHashingVersion: 20201221
   httpApi:
     cors: true
 
 functions:
-  hello:
-    handler: src/handler.hello
+  getTasks:
+    handler: src/tasks.getTasks
+    role: dynamodbCognitoRole
     events:
      - httpApi:
-        path: /hello
+        path: /tasks
         method: get
-  getRequest:
-    handler: src/handler.getRequest
+  getTask:
+    handler: src/tasks.getTask
+    role: dynamodbCognitoRole
     events:
      - httpApi:
-        path: /{name}
+        path: /tasks/{id}
         method: get
         request: 
           parameters: 
             paths: 
-              name: true
+              id: true
+  createTask:
+    handler: src/tasks.createTask
+    role: dynamodbCognitoRole
+    events:
+     - httpApi:
+        path: /tasks
+        method: post
+  updateTask:
+    handler: src/tasks.updateTask
+    role: dynamodbRole
+    events:
+     - httpApi:
+        path: /tasks
+        method: patch
+
+resources:
+  Resources:
+    tasksTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.AWS_TASKTABLEID}
+        AttributeDefinitions:
+          - AttributeName: type
+            AttributeType: S
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: type
+            KeyType: HASH
+          - AttributeName: id
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        # LocalSecondaryIndexes:
+        #   - IndexName: referenceLocalIndex
+        #     KeySchema:
+        #     - AttributeName: id
+        #       KeyType: HASH
+        #     - AttributeName: task
+        #       KeyType: RANGE
+        #     Projection:
+        #       ProjectionType: KEYS_ONLY
+          # - IndexName: commentsLSI
+          #   KeySchema:
+          #   - AttributeName: id
+          #     KeyType: HASH
+          #   - AttributeName: type
+          #     KeyType: RANGE
+          #   Projection:
+          #     NonKeyAttributes:
+          #     - timestamp
+          #     - body
+          #     - from
+          #     ProjectionType: INCLUDE
+    commentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.AWS_COMMENTSTABLEID}
+        AttributeDefinitions:
+          - AttributeName: task
+            AttributeType: S
+          - AttributeName: created_at
+            AttributeType: N
+        KeySchema:
+          - AttributeName: task
+            KeyType: HASH
+          - AttributeName: created_at
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    dynamodbRole:
+      Type: AWS::IAM::Role
+      Properties:
+        Path: /
+        RoleName: ${self:service}-${self:provider.stage}-${self:provider.region}-lambdaRole-dynamoDb # required if you want to use 'serverless deploy --function' later on
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        # note that these rights are needed if you want your function to be able to communicate with resources within your vpc
+        # ManagedPolicyArns:
+        #   - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        Policies:
+          - PolicyName: AWSLambdaDynamoDbBasicPerms
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow # note that these rights are given in the default policy and are required if you want logs out of your lambda(s)
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource:
+                    - 'Fn::Join':
+                      - ':'
+                      - - 'arn:aws:logs'
+                        - Ref: 'AWS::Region'
+                        - Ref: 'AWS::AccountId'
+                        - 'log-group:/aws/lambda/*:*:*'
+                - Effect: Allow
+                  Action:
+                    - dynamodb:Query
+                    - dynamodb:Scan
+                    - dynamodb:GetItem
+                    - dynamodb:PutItem
+                    - dynamodb:UpdateItem
+                    - dynamodb:DeleteItem
+                  Resource:
+                    - 'Fn::Join':
+                      - ':'
+                      - - 'arn:aws:dynamodb'
+                        - Ref: 'AWS::Region'
+                        - Ref: 'AWS::AccountId'
+                        - 'table/${self:provider.environment.BUSINESSTABLEID}'
+                    - 'Fn::Join':
+                      - ':'
+                      - - 'arn:aws:dynamodb'
+                        - Ref: 'AWS::Region'
+                        - Ref: 'AWS::AccountId'
+                        - 'table/${self:provider.environment.TASKSTABLEID}'
+                    - 'Fn::Join':
+                      - ':'
+                      - - 'arn:aws:dynamodb'
+                        - Ref: 'AWS::Region'
+                        - Ref: 'AWS::AccountId'
+                        - 'table/${self:provider.environment.COMMENTSTABLEID}'
+                    - 'Fn::Join':
+                      - ':'
+                      - - 'arn:aws:dynamodb'
+                        - Ref: 'AWS::Region'
+                        - Ref: 'AWS::AccountId'
+                        - 'table/${self:provider.environment.ANNOUNCEMENTSTABLEID}'
+    dynamodbCognitoRole:
+      Type: AWS::IAM::Role
+      Properties:
+        Path: /
+        RoleName: ${self:service}-${self:provider.stage}-${self:provider.region}-lambdaRole-dynamoDb-Cognito # required if you want to use 'serverless deploy --function' later on
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        # note that these rights are needed if you want your function to be able to communicate with resources within your vpc
+        # ManagedPolicyArns:
+        #   - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        Policies:
+          - PolicyName: AWSLambdaDynamoDbCognitoAdminPerms
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow #logs
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource:
+                    - 'Fn::Join':
+                      - ':'
+                      - - 'arn:aws:logs'
+                        - Ref: 'AWS::Region'
+                        - Ref: 'AWS::AccountId'
+                        - 'log-group:/aws/lambda/*:*:*'
+                - Effect: Allow #cognito
+                  Action:
+                    - cognito-idp:AdminUpdateUserAttributes
+                    - cognito-idp:AdminGetUser
+                    - cognito-idp:AdminListGroupsForUser
+                  Resource:
+                    - 'Fn::Join':
+                      - ':'
+                      - - 'arn:aws:cognito-idp'
+                        - Ref: 'AWS::Region'
+                        - Ref: 'AWS::AccountId'
+                        - 'userpool/${self:provider.environment.USERPOOLID}'
+                - Effect: Allow #lambda
+                  Action:
+                    - lambda:invokeFunction
+                  Resource:
+                    - 'Fn::Join':
+                      - ':'
+                      - - 'arn:aws:lambda'
+                        - Ref: 'AWS::Region'
+                        - Ref: 'AWS::AccountId'
+                        - 'function:${self:service}-${self:provider.stage}-getValidatedUser'
+                - Effect: Allow #dynano
+                  Action:
+                    - dynamodb:Query
+                    - dynamodb:Scan
+                    - dynamodb:GetItem
+                    - dynamodb:PutItem
+                    - dynamodb:UpdateItem
+                    - dynamodb:DeleteItem
+                  Resource:
+                    - 'Fn::Join':
+                      - ':'
+                      - - 'arn:aws:dynamodb'
+                        - Ref: 'AWS::Region'
+                        - Ref: 'AWS::AccountId'
+                        - 'table/${self:provider.environment.BUSINESSTABLEID}'
+                    - 'Fn::Join':
+                      - ':'
+                      - - 'arn:aws:dynamodb'
+                        - Ref: 'AWS::Region'
+                        - Ref: 'AWS::AccountId'
+                        - 'table/${self:provider.environment.TASKSTABLEID}'
+                    - 'Fn::Join':
+                      - ':'
+                      - - 'arn:aws:dynamodb'
+                        - Ref: 'AWS::Region'
+                        - Ref: 'AWS::AccountId'
+                        - 'table/${self:provider.environment.COMMENTSTABLEID}'
 
 package:
   exclude:
     - node_modules/aws-sdk/**
-  individually: true
 
 plugins:
   - serverless-webpack
