@@ -2,7 +2,7 @@
 
 import * as AWS from "aws-sdk";
 import Joi from "joi";
-const tasksTableName = process.env.AWS_TASKTABLEID;
+const tasksTableName = process.env.AWS_TASKSTABLEID;
 
 interface task {
   id: string,
@@ -12,8 +12,7 @@ interface task {
   body: string,
   reporter: string,
   status: string,
-  priority: string,
-  subscribers: string[]
+  priority: string
 }
 
 interface user {
@@ -56,14 +55,12 @@ const taskSchema = Joi.object({
   body: Joi.string().required(),
   reporter: Joi.string(),
   status: Joi.string().valid("OPEN", "IN_PROGRESS", "CLOSED").required(),
-  priority: Joi.string().valid("LOW", "HIGH").required(),
-  subscribers: Joi.array().items(Joi.string()).required()
+  priority: Joi.string().valid("LOW", "HIGH").required()
 });
 
 const updateTaskSchema = Joi.object({
   id: Joi.string().required(),
-  status: Joi.string().valid("OPEN", "IN_PROGRESS", "CLOSED").required(),
-  subscribers: Joi.array().items(Joi.string()).required(),
+  status: Joi.string().valid("OPEN", "IN_PROGRESS", "CLOSED").required()
 });
 
 const referenceSchema = Joi.object({
@@ -83,13 +80,13 @@ const createTask = async (event: any) => {
     };
   }
 
-  let { name, body, reporter, priority, status, subscribers } = validatedData.value;
+  let { name, body, reporter, priority, status } = validatedData.value;
   let currentIndex = await getIndex()
   let nextIndex = currentIndex + 1
   let id = nextIndex
 
   //pad and prefix id 
-  let prefix = "SBOS-"
+  let prefix = "KANDU-"
   id = id.toString();
   while (id.length < 4) id = "0" + id;
   id = prefix + id
@@ -103,9 +100,7 @@ const createTask = async (event: any) => {
     body,
     reporter,
     status,
-    priority,
-    subscribers
-
+    priority
   };
 
   let username = "testUser";
@@ -196,12 +191,12 @@ const createTask = async (event: any) => {
 };
 
 const getTasks = async (event: any, context: any) => {
-  if (!event.headers.authorization || event.headers.authorization == "") {
-    return {
-      statusCode: 401,
-      body: "Unauthorized",
-    };
-  }
+  // if (!event.headers.authorization || event.headers.authorization == "") {
+  //   return {
+  //     statusCode: 401,
+  //     body: "Unauthorized",
+  //   };
+  // }
 
   let params = {
     TableName: tasksTableName,
@@ -279,7 +274,7 @@ const updateTask  = async (event: any) => {
     };
   }
 
-  let { id, status, subscribers } = validatedData.value;
+  let { id, status } = validatedData.value;
   let type = "task";
 
   let docClient = new AWS.DynamoDB.DocumentClient();
@@ -292,12 +287,10 @@ const updateTask  = async (event: any) => {
     },
     UpdateExpression: "set #st = :st, #su = :su",
     ExpressionAttributeNames: {
-      "#st": "status",
-      "#su": "subscribers"
+      "#st": "status"
     },
     ExpressionAttributeValues: {
-      ":st": status,
-      ":su": subscribers
+      ":st": status
     },
     ReturnValues: "ALL_NEW",
   };
@@ -330,6 +323,13 @@ const updateTask  = async (event: any) => {
     body: JSON.stringify({
       result,
     }),
+  };
+}
+
+const deleteTask = async (event:any) => {
+  return {
+    statusCode: 200,
+    body: JSON.stringify("Delete API"),
   };
 }
 
@@ -463,7 +463,8 @@ module.exports = {
   createTask, 
   getTask, 
   getTasks, 
-  updateTask, 
+  updateTask,
+  deleteTask,
   getIndex, 
   createIndexTable, 
   updateTableIndex 

@@ -11,8 +11,8 @@ provider:
     SITE: ${self:service}-${self:provider.stage}
   environment: 
     REGION: ${self:provider.region}
-    TASKSTABLEID: ${self:service}-${self:provider.stage}-${self:provider.region}-tasks
-    COMMENTSTABLEID: ${self:service}-${self:provider.stage}-${self:provider.region}-comments
+    AWS_TASKSTABLEID: ${self:service}-${self:provider.stage}-${self:provider.region}-tasks
+    AWS_COMMENTSTABLEID: ${self:service}-${self:provider.stage}-${self:provider.region}-comments
     
 
   lambdaHashingVersion: 20201221
@@ -52,13 +52,24 @@ functions:
      - httpApi:
         path: /tasks
         method: patch
+  deleteTask:
+    handler: src/handler.deleteTask
+    role: dynamodbRole
+    events:
+     - httpApi:
+        path: /tasks/{id}
+        method: delete
+        request: 
+          parameters: 
+            paths: 
+              id: true
 
 resources:
   Resources:
     tasksTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ${self:provider.environment.AWS_TASKTABLEID}
+        TableName: ${self:provider.environment.AWS_TASKSTABLEID}
         AttributeDefinitions:
           - AttributeName: type
             AttributeType: S
@@ -157,13 +168,13 @@ resources:
                       - - 'arn:aws:dynamodb'
                         - Ref: 'AWS::Region'
                         - Ref: 'AWS::AccountId'
-                        - 'table/${self:provider.environment.TASKSTABLEID}'
+                        - 'table/${self:provider.environment.AWS_TASKSTABLEID}'
                     - 'Fn::Join':
                       - ':'
                       - - 'arn:aws:dynamodb'
                         - Ref: 'AWS::Region'
                         - Ref: 'AWS::AccountId'
-                        - 'table/${self:provider.environment.COMMENTSTABLEID}'
+                        - 'table/${self:provider.environment.AWS_COMMENTSTABLEID}'
     
 package:
   exclude:
