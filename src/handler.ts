@@ -285,7 +285,7 @@ const updateTask  = async (event: any) => {
       type,
       id
     },
-    UpdateExpression: "set #st = :st, #su = :su",
+    UpdateExpression: "set #st = :st",
     ExpressionAttributeNames: {
       "#st": "status"
     },
@@ -327,9 +327,57 @@ const updateTask  = async (event: any) => {
 }
 
 const deleteTask = async (event:any) => {
+  if (!event.pathParameters.id || event.pathParameters.id == "") {
+    return {
+      statusCode: 400,
+      body: "No id provided.",
+    };
+  }
+
+  console.log(event)
+  let id = event.pathParameters.id;
+  let type = "task";
+
+  let docClient = new AWS.DynamoDB.DocumentClient();
+  let params = {
+    ReturnValues: "ALL_OLD",
+    TableName: tasksTableName,
+    Key: {
+      type,
+      id
+    },
+  };
+
+  let result: any;
+  result = await new Promise(function (resolve, reject) {
+    docClient.delete(params, (err: any, data: any) => {
+      if (err) reject(err);
+      else resolve(data);
+    });
+  }).catch((err) => {
+    console.log({ err });
+    return {
+      statusCode: 400,
+      body: JSON.stringify(err),
+    };
+  });
+
+  console.log({result});
+
+  if (Object.keys(result).length === 0) {
+    return {
+      statusCode: 404,
+      body: JSON.stringify({
+        message: "Not Found",
+      }),
+    };
+  }
+
   return {
     statusCode: 200,
-    body: JSON.stringify("Delete API"),
+    body: JSON.stringify({
+      result,
+    }),
   };
 }
 
