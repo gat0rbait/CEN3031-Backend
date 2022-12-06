@@ -85,7 +85,6 @@ const createTask = async (event: any) => {
   let nextIndex = currentIndex + 1
   let id = nextIndex
 
-  //pad and prefix id 
   let prefix = "KANDU-"
   id = id.toString();
   while (id.length < 4) id = "0" + id;
@@ -139,7 +138,6 @@ const createTask = async (event: any) => {
 
   console.log(taskResult);
 
-  //conditionExpression failure (duplicate task number)
   if (taskResult.statusCode && taskResult.statusCode != 200) {
     console.log({ taskResult });
     return {
@@ -148,7 +146,7 @@ const createTask = async (event: any) => {
     };
   }
 
-  await updateTableIndex(nextIndex) //save the new index to table
+  await updateTableIndex(nextIndex)
 
 
   let referenceParams = {
@@ -166,23 +164,6 @@ const createTask = async (event: any) => {
     console.log({ err });
   });
   
-  //send out email to customer
-  // let emailParams = {
-  //   email: user.userData.email,
-  //   name: user.userData.name,
-  //   task: id
-  // }
-  // await emailNewTask(emailParams);
-
-  //send out email to admin
-  // let emailAdminParams = {
-  //   task: id,
-  //   title: name,
-  //   description: body,
-  //   priority: priority,
-  //   reporter: user.userData
-  // }
-  // await emailNewAdminTask(emailAdminParams);
 
   return {
     statusCode: 200,
@@ -191,12 +172,6 @@ const createTask = async (event: any) => {
 };
 
 const getTasks = async (event: any, context: any) => {
-  // if (!event.headers.authorization || event.headers.authorization == "") {
-  //   return {
-  //     statusCode: 401,
-  //     body: "Unauthorized",
-  //   };
-  // }
 
   let params = {
     TableName: tasksTableName,
@@ -245,7 +220,6 @@ const getTask = async (event: any) => {
 
   let id = event.pathParameters.id;
 
-  //getTaskInternal
   let result: any = await getTaskData(id)
 
   console.log(result)
@@ -279,7 +253,7 @@ const updateTask  = async (event: any) => {
 
   let docClient = new AWS.DynamoDB.DocumentClient();
 
-  var params = {
+  let params = {
     TableName: tasksTableName,
     Key: {
       type,
@@ -302,21 +276,6 @@ const updateTask  = async (event: any) => {
       else resolve(data);
     });
   });
-
-  let reporter = result.Attributes.reporter;
-
-  //emails
-  // let emailParams = {
-  //     email: reporter.userData.email,
-  //     name: reporter.userData.name,
-  //     task: id
-  // }
-  
-  // if (status == "IN_PROGRESS") {
-  //   await emailInProgressTask(emailParams);
-  // } else if (status == "CLOSED") {
-  //   await emailClosedTask(emailParams);
-  // }    
 
   return {
     statusCode: 200,
@@ -446,7 +405,7 @@ const getIndex = async () => {
 const updateTableIndex = async (newIndex: number) => {
   let docClient = new AWS.DynamoDB.DocumentClient();
 
-  var params = {
+  let params = {
     TableName: tasksTableName,
     Key: {
       type: "index",
@@ -490,8 +449,7 @@ const createIndexTable = async () => {
     },
   };
 
-  let indexResult: any;
-  indexResult = await new Promise(function (resolve, reject) {
+  let indexResult = await new Promise(function (resolve, reject) {
     docClient.put(params, (err: any, data: any) => {
       if (err) reject(err);
       else resolve(data);
